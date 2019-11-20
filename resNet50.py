@@ -1,3 +1,11 @@
+import numpy as np 
+import matplotlib.pyplot as plt
+from PIL import Image
+
+from keras import optimizers
+from keras.models import Sequential,Model
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPool2D, GlobalAveragePooling2D
+
 def unchanged_identity(ker_size, inputTensor, all_filters):
     #get the filters
     filter1, filter2, filter3 = all_filters
