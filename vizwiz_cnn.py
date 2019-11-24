@@ -5,13 +5,17 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt 
 import tensorflow as tf
+import keras
 from sklearn.model_selection import train_test_split
+from keras.utils import to_categorical
 
-from tensorflow.keras.models import Sequential 
-from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D
+from keras.models import Sequential, Model
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+from keras.layers.normalization import BatchNormalization
+from keras.layers.advanced_activations import LeakyReLU
+from keras.layers import Activation, Dense, BatchNormalization
 
-
-IMG_SIZE = 100
+IMG_SIZE = 28
 DATADIR = "C:\Datasets\VizWiz"
 CATEGORIES = ["Non-Priv", "Priv"]
 
@@ -19,13 +23,9 @@ training_data = []
 feature_set = []
 label_set = []
 
-# def one_hot_label(img):
-#     label = img.split('.')[0]
-#     if label == 'Non':
-#         ohl = np.array([1,0])
-#     else:
-#         ohl = np.array([0, 1])
-#     return ohl
+batch_size = 64
+epochs = 20
+num_classes = 2
 
 def initializing_training_data():
     for category in CATEGORIES:
@@ -50,38 +50,71 @@ for feature, label in training_data:
     label_set.append(label)
 
 # this is 3D, but for plt.imshow(img), it needs to be a 2D image
-feature_set = np.array(feature_set).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+feature_set = np.array(feature_set).reshape(-1, IMG_SIZE, IMG_SIZE)
 
 # split data using sklearn (80:20 ratio between training and test data)
 x_train, x_test, y_train, y_test = train_test_split(feature_set, label_set, test_size = 0.2)
 
-#tf.image.rgb_to_grayscale(x_train)
+print("Training data shape: ", np.array(x_train).shape, np.array(y_train).shape)
+print("Testing data shape: ", np.array(x_test).shape, np.array(y_test).shape)
 
-# normalize data between 0-1
-x_train = tf.keras.utils.normalize(x_train, axis=1)
+#classification problem -> [0,1] => [non-priv, priv] 
+classes = np.unique(np.array(y_train))
+nclasses = len(classes)
 
-# define model
-model = Sequential()
+print("Total # of outputs: ", nclasses)
+print("Output classes: ", classes)
 
-# add layers
-model = Sequential()
-model.add(Conv2D(64, (3,3), input_shape = x_train.shape[1:]))
-model.add(Activation("relu"))
-model.add(MaxPooling2D(pool_size=(2,2)))
+x_train = x_train.reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+x_test = x_test.reshape(-1, IMG_SIZE, IMG_SIZE, 1)
 
-model.add(Conv2D(64, (3,3)))
-model.add(Activation("relu"))
-model.add(MaxPooling2D(pool_size=(2,2)))
+print(x_train.shape, x_test.shape)
 
-model.add(Flatten()) #converts our 3D feature into 1D feature vector
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
 
-model.add(Dense(1))
-model.add(Activation("sigmoid"))
+#normalize between 0 - 1
+x_train = x_train / 255.0
+x_test = x_test / 255.0
 
-#define configuration of how your model will learn
-model.compile(loss="binary_crossentropy", 
-             optimizer="adam",
-             metrics=['accuracy'])
+#one hot encoding
+# i.e. (1., 0.) for a non-priv image
+y_train_one_hot = to_categorical(y_train)
+y_test_one_hot = to_categorical(y_test)
 
-#train model
-model.fit(x_train, y_train, batch_size=32, epochs=10, validation_split=0.1)
+# Display the change for category label using one-hot encoding
+print('Original label:', y_train[0])
+print('After conversion to one-hot:', y_train_one_hot[0])
+
+x_train,x_valid,train_label,valid_label = train_test_split(x_train, y_train_one_hot, test_size=0.2, random_state=13)
+
+print(x_train.shape, x_valid.shape, train_label.shape, valid_label.shape)
+
+#begin forming model
+vizwiz_model = Sequential()
+
+vizwiz_model.add(Conv2D(32, kernel_size=(3, 3),activation='linear',input_shape=(IMG_SIZE,IMG_SIZE,1),padding='same'))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
+vizwiz_model.add(MaxPooling2D((2, 2),padding='same'))
+
+vizwiz_model.add(Conv2D(64, (3, 3), activation='linear',padding='same'))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
+vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
+
+vizwiz_model.add(Conv2D(128, (3, 3), activation='linear',padding='same'))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
+vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
+
+
+vizwiz_model.add(Flatten())
+
+vizwiz_model.add(Dense(128, activation='linear'))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
+
+vizwiz_model.add(Dense(num_classes, activation='softmax'))
+
+vizwiz_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(),metrics=['accuracy'])
+
+vizwiz_model.summary()
+
+train_model = vizwiz_model.fit(x_train, train_label, batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(x_valid, valid_label))
