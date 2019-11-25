@@ -5,15 +5,20 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt 
 import tensorflow as tf
-import keras
-from sklearn.model_selection import train_test_split
-from keras.utils import to_categorical
 
+import keras
+from keras.utils import to_categorical
 from keras.models import Sequential, Model
+
 from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers import Activation, Dense, BatchNormalization
+
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+
+
 
 IMG_SIZE = 64
 DATADIR = "C:\Datasets\VizWiz"
@@ -125,12 +130,15 @@ vizwiz_model.compile(loss=keras.losses.binary_crossentropy, optimizer=keras.opti
 
 vizwiz_model.summary()
 
-train_model = vizwiz_model.fit(x_train, train_label, batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(x_valid, valid_label), shuffle=True)
+vizwiz_model.fit(x_train, train_label, batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(x_valid, valid_label), shuffle=True)
 
-accuracy = train_model.history['acc']
-val_accuracy = train_model.history['val_acc']
-loss = train_model.history['loss']
-val_loss = train_model.history['val_loss']
+#--------------------------------------------------------------
+
+# if you want to see the graph, assign variable to line above, train_model, replace it with vizwiz_model variable below
+accuracy = vizwiz_model.history['acc']
+val_accuracy = vizwiz_model.history['val_acc']
+loss = vizwiz_model.history['loss']
+val_loss = vizwiz_model.history['val_loss']
 epochs = range(len(accuracy))
 plt.plot(epochs, accuracy, 'bo', label='Training accuracy')
 plt.plot(epochs, val_accuracy, 'b', label='Validation accuracy')
@@ -142,3 +150,30 @@ plt.plot(epochs, val_loss, 'b', label='Validation loss')
 plt.title('Training and validation loss')
 plt.legend()
 plt.show()
+
+#--------------------------------------------------------------
+
+#test your results with test data
+predicted_classes = vizwiz_model.predict(x_test)
+predicted_classes = np.argmax(np.round(predicted_classes),axis=1)
+
+#print examples of correct classificiation
+correct = np.where(predicted_classes==y_test)[0]
+for i, correct in enumerate(correct[:9]):
+    plt.subplot(3,3,i+1)
+    plt.imshow(x_test[correct].reshape(IMG_SIZE,IMG_SIZE), cmap='gray', interpolation='none')
+    plt.title("Predicted {}, Class {}".format(predicted_classes[correct], y_test[correct]))
+    plt.tight_layout()
+
+#print examples of incorrect classifications
+incorrect = np.where(predicted_classes!=y_test)[0]
+print("# of incorrect labels: ", len(incorrect))
+for i, incorrect in enumerate(incorrect[:9]):
+    plt.subplot(3,3,i+1)
+    plt.imshow(x_test[incorrect].reshape(IMG_SIZE,IMG_SIZE), cmap='gray', interpolation='none')
+    plt.title("Predicted {}, Class {}".format(predicted_classes[incorrect], y_test[incorrect]))
+    plt.tight_layout()
+
+#print a metrics, essentially a report of precision, recall, f1-score and support
+target_names = ["Class {}".format(i) for i in range(num_classes)]
+print(classification_report(y_test, predicted_classes, target_names=target_names))
