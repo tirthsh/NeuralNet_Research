@@ -15,7 +15,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers import Activation, Dense, BatchNormalization
 
-IMG_SIZE = 28
+IMG_SIZE = 64
 DATADIR = "C:\Datasets\VizWiz"
 CATEGORIES = ["Non-Priv", "Priv"]
 
@@ -23,7 +23,7 @@ training_data = []
 feature_set = []
 label_set = []
 
-batch_size = 64
+batch_size = 32
 epochs = 20
 num_classes = 2
 
@@ -93,28 +93,52 @@ print(x_train.shape, x_valid.shape, train_label.shape, valid_label.shape)
 #begin forming model
 vizwiz_model = Sequential()
 
-vizwiz_model.add(Conv2D(32, kernel_size=(3, 3),activation='linear',input_shape=(IMG_SIZE,IMG_SIZE,1),padding='same'))
-vizwiz_model.add(LeakyReLU(alpha=0.1))
+vizwiz_model.add(Conv2D(32, kernel_size=(3, 3),activation='linear',input_shape=(64,64,1),padding='same'))
 vizwiz_model.add(MaxPooling2D((2, 2),padding='same'))
+vizwiz_model.add(Dropout(0.25))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
 
 vizwiz_model.add(Conv2D(64, (3, 3), activation='linear',padding='same'))
-vizwiz_model.add(LeakyReLU(alpha=0.1))
 vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
+vizwiz_model.add(Dropout(0.25))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
 
 vizwiz_model.add(Conv2D(128, (3, 3), activation='linear',padding='same'))
-vizwiz_model.add(LeakyReLU(alpha=0.1))
 vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
+vizwiz_model.add(Dropout(0.4))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
 
+vizwiz_model.add(Conv2D(128, (3, 3), activation='linear',padding='same'))
+vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
+vizwiz_model.add(Dropout(0.4))
+vizwiz_model.add(LeakyReLU(alpha=0.1))
 
 vizwiz_model.add(Flatten())
 
 vizwiz_model.add(Dense(128, activation='linear'))
 vizwiz_model.add(LeakyReLU(alpha=0.1))
 
+vizwiz_model.add(Dropout(0.3))
 vizwiz_model.add(Dense(num_classes, activation='softmax'))
 
-vizwiz_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(),metrics=['accuracy'])
+vizwiz_model.compile(loss=keras.losses.binary_crossentropy, optimizer=keras.optimizers.Adam(),metrics=['accuracy'])
 
 vizwiz_model.summary()
 
-train_model = vizwiz_model.fit(x_train, train_label, batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(x_valid, valid_label))
+train_model = vizwiz_model.fit(x_train, train_label, batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(x_valid, valid_label), shuffle=True)
+
+accuracy = train_model.history['acc']
+val_accuracy = train_model.history['val_acc']
+loss = train_model.history['loss']
+val_loss = train_model.history['val_loss']
+epochs = range(len(accuracy))
+plt.plot(epochs, accuracy, 'bo', label='Training accuracy')
+plt.plot(epochs, val_accuracy, 'b', label='Validation accuracy')
+plt.title('Training and validation accuracy')
+plt.legend()
+plt.figure()
+plt.plot(epochs, loss, 'bo', label='Training loss')
+plt.plot(epochs, val_loss, 'b', label='Validation loss')
+plt.title('Training and validation loss')
+plt.legend()
+plt.show()
