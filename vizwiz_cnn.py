@@ -18,6 +18,8 @@ from keras.layers import Activation, Dense, BatchNormalization
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 
+
+
 IMG_SIZE = 64
 DATADIR = "C:\Datasets\VizWiz"
 CATEGORIES = ["Non-Priv", "Priv"]
@@ -30,7 +32,6 @@ batch_size = 32
 epochs = 20
 num_classes = 2
 
-#traverse through both folders defined above
 def initializing_training_data():
     for category in CATEGORIES:
         path = os.path.join(DATADIR, category)
@@ -47,21 +48,22 @@ def initializing_training_data():
             
 initializing_training_data()
 
-#randomize for better training
 random.shuffle(training_data)
 
 for feature, label in training_data:
     feature_set.append(feature)
     label_set.append(label)
 
-# this is 3D, but for plt.imshow(img), it needs to be a 2D image
-feature_set = np.array(feature_set).reshape(-1, IMG_SIZE, IMG_SIZE)
-
 # split data using sklearn (80:20 ratio between training and test data)
 x_train, x_test, y_train, y_test = train_test_split(feature_set, label_set, test_size = 0.2)
 
-x_train = x_train.reshape(-1, IMG_SIZE, IMG_SIZE, 1) / 255.0
-x_test = x_test.reshape(-1, IMG_SIZE, IMG_SIZE, 1) / 255.0
+#classification problem -> [0,1] => [non-priv, priv] 
+classes = np.unique(np.array(y_train))
+nclasses = len(classes)
+
+#normalize between 0 - 1
+x_train = x_train / 255.0
+x_test = x_test / 255.0
 
 #one hot encoding
 # i.e. (1., 0.) for a non-priv image
@@ -73,48 +75,51 @@ x_train,x_valid,train_label,valid_label = train_test_split(x_train, y_train_one_
 #begin forming model
 vizwiz_model = Sequential()
 
-vizwiz_model.add(Conv2D(32, kernel_size=(3, 3),activation='linear',input_shape=(IMG_SIZE,IMG_SIZE,1),padding='same'))
-vizwiz_model.add(MaxPooling2D((2, 2),padding='valid'))
-vizwiz_model.add(Dropout(0.3))
-vizwiz_model.add(LeakyReLU(alpha = 0.1))
+vizwiz_model.add(Conv2D(32, (3, 3),input_shape=(IMG_SIZE,IMG_SIZE,1)))
+vizwiz_model.add(MaxPooling2D(pool_size=(2, 2)))
+vizwiz_model.add(Dropout(0.25))
+vizwiz_model.add(Activation("relu"))
 
-vizwiz_model.add(Conv2D(32, (3, 3), activation='linear',padding='valid'))
-vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
-vizwiz_model.add(Dropout(0.3))
-vizwiz_model.add(LeakyReLU(alpha = 0.1))
+vizwiz_model.add(Conv2D(64, (3, 3)))
+vizwiz_model.add(MaxPooling2D(pool_size=(2, 2)))
+vizwiz_model.add(Dropout(0.25))
+vizwiz_model.add(Activation("relu"))
 
-vizwiz_model.add(Conv2D(64, (3, 3), activation='linear',padding='valid'))
-vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='valid'))
-vizwiz_model.add(Dropout(0.5))
-vizwiz_model.add(LeakyReLU(alpha = 0.1))
+vizwiz_model.add(Conv2D(64, (3, 3)))
+vizwiz_model.add(MaxPooling2D(pool_size=(2, 2)))
+vizwiz_model.add(Dropout(0.4))
+vizwiz_model.add(Activation("relu"))
 
-vizwiz_model.add(Conv2D(64, (3, 3), activation='linear',padding='valid'))
-vizwiz_model.add(MaxPooling2D(pool_size=(2, 2),padding='valid'))
-vizwiz_model.add(Dropout(0.5))
-vizwiz_model.add(ReLU())
+vizwiz_model.add(Conv2D(64, (3, 3)))
+vizwiz_model.add(MaxPooling2D(pool_size=(2, 2)))
+vizwiz_model.add(Dropout(0.4))
+vizwiz_model.add(Activation("relu"))
 
 vizwiz_model.add(Flatten())
 
-vizwiz_model.add(Dense(64, activation='linear'))
-vizwiz_model.add(LeakyReLU(alpha = 0.1))
+vizwiz_model.add(Dense(128, activation='linear'))
+vizwiz_model.add(Activation("relu"))
 
-vizwiz_model.add(Dropout(0.4))
-vizwiz_model.add(Dense(num_classes, activation='softmax'))
+vizwiz_model.add(Dropout(0.3))
+vizwiz_model.add(Dense(num_classes, activation='sigmoid'))
 
-vizwiz_model.compile(loss=keras.losses.binary_crossentropy, optimizer=keras.optimizers.Adam(),metrics=['accuracy'])
+vizwiz_model.compile(loss="binary_crossentropy", 
+             optimizer="adam",
+             metrics=['accuracy'])
 
 vizwiz_model.summary()
 
-vizwiz_model.fit(x_train, train_label, batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(x_valid, valid_label), shuffle=True)
+
+vizwiz_model.fit(x_train, train_label, batch_size=batch_size,epochs=epochs,validation_data=(x_valid, valid_label))
 
 #test your results with test data
+#test your results with test data
 predicted_classes = vizwiz_model.predict(x_test)
-predicted_classes = np.argmax(np.round(predicted_classes), axis = 1)
-
-#classification problem -> [0,1] => [non-priv, priv] 
-classes = np.unique(np.array(y_train))
-nclasses = len(classes)
+predicted_classes = np.argmax(np.round(predicted_classes),axis=1)
 
 #print a metrics, essentially a report of precision, recall, f1-score and support
-metrics = ["Class {}".format(i) for i in range(num_classes)]
-print(classification_report(y_test, predicted_classes, target_names=metrics))
+target_names = ["Class {}".format(i) for i in range(num_classes)]
+print(classification_report(y_test, predicted_classes, target_names=target_names))
+#print a metrics, essentially a report of precision, recall, f1-score and support
+target_names = ["Class {}".format(i) for i in range(num_classes)]
+print(classification_report(y_test, predicted_classes, target_names=target_names))
