@@ -1,7 +1,7 @@
 # NeuralNet_Research
 
 Worked on learning the basics of Neural networks while working with Tensorflow and Keras API calls. 
-Use Anaconda Navigator to run Juypter.
+Used Anaconda Navigator to run Juypter.
 
 1. Check out my blog on Deep Neural Networks - https://medium.com/@tirthsh0/intro-to-deep-neural-networks-is-it-really-that-hard-94b74e6da790
 
